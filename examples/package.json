@@ -1,0 +1,13 @@
+{
+  "name": "examples",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "swap": "node index.js"
+  },
+  "dependencies": {
+    "@GoPeanutGames/swap-lib": "file:../"
+  }
+}
