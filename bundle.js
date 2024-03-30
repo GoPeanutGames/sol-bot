@@ -103,8 +103,8 @@ const getAddressLookupTableAccounts = async (connection, keys) => {
 const createSwapTx = async (
   connection, userPukey, inputMint, outputMints, amount, slippageBps, extraIxs=[],
 ) => {
-  if(outputMints.length > 3) {
-    throw new Error("Max output accounts is 3");
+  if(outputMints.length > 1) {
+    throw new Error("Max output accounts is 1");
   }
 
   const swapAmount = new BN(Math.floor(amount / outputMints.length));
@@ -116,7 +116,7 @@ const createSwapTx = async (
     quoteResponses.map(quoteResponse => fetchSwapIx(quoteResponse, userPukey))
   );
 
-  const payload = swapIxs.reduce(async (acc, swapIxs) => {
+  const payload = await swapIxs.reduce(async (acc, swapIxs) => {
     await acc;
 
     const {
@@ -129,7 +129,7 @@ const createSwapTx = async (
     const addressLookupTableAccounts = await getAddressLookupTableAccounts(connection, addressLookupTableAddresses);
     
     const setupIxs = setupInstructions ? setupInstructions.map(deserializeInstruction) : [];
-    const cleanupIxs = cleanupInstruction ? deserializeInstruction(cleanupInstruction) : [];  
+    const cleanupIx = cleanupInstruction ? deserializeInstruction(cleanupInstruction) : [];  
     
     return {
       lut: [...acc.lut, ...addressLookupTableAccounts],
@@ -138,7 +138,7 @@ const createSwapTx = async (
         ...[
           ...setupIxs,
           deserializeInstruction(swapInstructionPayload),
-          ...cleanupIxs,
+          cleanupIx,
           ...extraIxs,
         ]
       ]
@@ -147,8 +147,6 @@ const createSwapTx = async (
     lut: [],
     ixs: [],
   });
-  
-  console.log(">>>>>> payload", payload);
   
   const blockhash = (await connection.getLatestBlockhash()).blockhash;
   const messageV0 = new TransactionMessage({
@@ -164,18 +162,6 @@ const {PublicKey} = anchor__namespace.web3;
 const TokenMintAccounts = {
   WSOL: {
     mint: new PublicKey("So11111111111111111111111111111111111111112"),
-    decimals: 9,
-  },
-  BURRRD_TOKEN: {
-    mint: new PublicKey("F8qtcT3qnwQ24CHksuRrSELtm5k9ob8j64xAzj3JjsMs"),
-    decimals: 4,
-  },
-  BONK_TOKEN: {
-    mint: new PublicKey("DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"),
-    decimals: 5,
-  },
-  PONKE_TOKEN: {
-    mint: new PublicKey("5z3EqYQo9HiCEs3R84RCDMu2n7anpDMxRhdK8PSWmrRC"),
     decimals: 9,
   }
 };
