@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "swap": "node index.js"
+    "swap": "ENV=mainnet ANCHOR_WALLET=./wallets/user.json  node index.js"
   },
   "dependencies": {
     "@GoPeanutGames/swap-lib": "file:../"
