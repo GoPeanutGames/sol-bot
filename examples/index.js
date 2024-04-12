@@ -23,7 +23,8 @@ anchor.setProvider(provider);
 
 
 const main = async () => {
-  // back-end code created the tx
+  // 1. FE sends a request to the back-end API which will create the swap transaction via a call to
+  // the `@GoPeanutGames/swap-lib` package.
   const serializedTx = await swap(
     provider,
     new PublicKey("5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9"),
@@ -34,13 +35,11 @@ const main = async () => {
     new PublicKey("5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9"),
   );
 
-  console.log("serializedTx => ", serializedTx);
-
-  // on the front-end you got to deserialize into
+  // 2. The back end returns a serialized transaction. On the front-end you got to deserialize into
   const swapTx = VersionedTransaction.deserialize(serializedTx);
   console.log("swapTx => ", swapTx)
 
-  // sign and send on the front-end
+  // 3. The FE will sign and send this transaction
   // return await provider.sendAndConfirm(swapTx);
 }
 
