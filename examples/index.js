@@ -29,6 +29,7 @@ const main = async () => {
     [
       new PublicKey("DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"),
     ],
+    new PublicKey("5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9"),
     100_000_000_000, // 100 SOL
   )
 }

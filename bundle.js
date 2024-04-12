@@ -25,11 +25,13 @@ const {BN} = anchor__namespace.default;
 
 const {
   PublicKey: PublicKey$1, TransactionMessage, AddressLookupTableAccount,
-  VersionedTransaction, TransactionInstruction,
+  VersionedTransaction, TransactionInstruction, SystemProgram,
 } = anchor__namespace.web3;
 
 const QUOTE_ENDPOINT = "https://quote-api.jup.ag/v6/quote";
 const SWAP_IX_ENDPOINT = "https://quote-api.jup.ag/v6/swap-instructions";
+const BPS = new BN(10000);
+const TAX = new BN(50);
 
 /// Returns the quote for a swap from inputMint to the outMint for the given amount
 /// slippageBps is in BPS https://www.investopedia.com/ask/answers/what-basis-point-bps
@@ -99,15 +101,30 @@ const getAddressLookupTableAccounts = async (connection, keys) => {
   }, []);
 };
 
+const calcTaxFeeAndSwapAmount = (amount) => {
+  const totalAmount = new BN(Math.floor(amount));
+  const taxAmount = (totalAmount * TAX) / BPS;
+  const swapAmount = totalAmount - taxAmountl;
+
+  return [swapAmount, taxAmount];
+};
+
 /// Use Jupyter aggregator to swap the given sellToken into buyToken
 const createSwapTx = async (
-  connection, userPukey, inputMint, outputMints, amount, slippageBps, extraIxs=[],
+  connection,
+  userPukey,
+  inputMint,
+  outputMints,
+  amount,
+  slippageBps,
+  treasury,
+  extraIxs=[],
 ) => {
   if(outputMints.length > 1) {
     throw new Error("Max output accounts is 1");
   }
 
-  const swapAmount = new BN(Math.floor(amount / outputMints.length));
+  const [swapAmount, taxAmount] = calcTaxFeeAndSwapAmount(amount);
   
   const quoteResponses = await Promise.all(
     outputMints.map(outputMint => fetchQuoteResponse(inputMint, outputMint, swapAmount, slippageBps))
@@ -148,11 +165,18 @@ const createSwapTx = async (
     ixs: [],
   });
   
+  const userPk = new PublicKey$1(userPukey);
+  const taxIx = SystemProgram.transfer({
+    fromPubkey: userPk,
+    toPubkey: treasury,
+    lamports: taxAmount,
+  });
+
   const blockhash = (await connection.getLatestBlockhash()).blockhash;
   const messageV0 = new TransactionMessage({
-    payerKey: userPukey,
+    payerKey: userPk,
     recentBlockhash: blockhash,
-    instructions: payload.ixs,
+    instructions: [...taxIx, payload.ixs],
   }).compileToV0Message(payload.lut);
 
   return new VersionedTransaction(messageV0);};
@@ -169,10 +193,11 @@ const TokenMintAccounts = {
 /// @param provider - The solana web3 provider. In web environments this will be provided by the browser wallet
 /// @param userAccount - the public key of the user wallet
 /// @param outputMints - a list of public keys representing the mint accounts we are swapping SOL for
-/// @param slippageBps - slippage bps to be applied during the swap. default is 1%
 /// @param amount - total amount of SOL to be swapped
+/// @param treasury - the wallet that receives the tax fee
+/// @param slippageBps - slippage bps to be applied during the swap. default is 1%
 const swap = async (
-  provider, userAccount, outputMints, amount, slippageBps=100
+  provider, userAccount, outputMints, amount, treasury, slippageBps=100
 ) => {
   // Swap SOL for all outputMints. The sol amount will be split equally
   const swapTx = await createSwapTx(
@@ -182,10 +207,11 @@ const swap = async (
     outputMints,
     amount,
     slippageBps,
+    treasury,
     [],
   );
   
-  return await provider.sendAndConfirm(swapTx);
+  return swapTx.serialize();
 };
 
 exports.swap = swap;
